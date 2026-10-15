@@ -1,0 +1,40 @@
+name: IBKR Paper Readiness (isolated branch)
+on:
+  push:
+    branches: [feature/ibkr-paper-readiness-autovalidation]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  readiness:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Offline research and paper-safety tests
+        run: PYTHONPATH=src python -m unittest discover -s tests -v
+      - name: Reproduce audited historical scores
+        run: |
+          python scripts/market_validation.py --output outputs/market_validation.json
+          python scripts/forecast_calibration.py --output outputs/forecast_calibration.json
+          python scripts/ibkr_readiness.py --output outputs/ibkr_readiness.json
+          python - <<'PY'
+          import json
+          r=json.load(open("outputs/ibkr_readiness.json"))
+          assert r["live_execution_allowed"] is False
+          assert r["paper_execution_armed"] is False
+          assert r["status"] == "BLOCKED_PENDING_INDEPENDENT_EVIDENCE"
+          PY
+      - name: Publish offline readiness artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: isolated-ibkr-paper-readiness
+          path: |
+            outputs/market_validation.json
+            outputs/forecast_calibration.json
+            outputs/ibkr_readiness.json
+          if-no-files-found: error
