@@ -27,6 +27,38 @@ On Windows PowerShell, activate the virtual environment using .venv\Scripts\Acti
 
 The demo symbols and prices are synthetic, **not market performance**. Use a daily close CSV for offline research; data ingestion will be added in a separate phase. Price files must have complete daily coverage for the same symbols. The eventual universe must reflect historical index membership to avoid survivorship bias.
 
+
+## Broad market strategy study (October 2026)
+
+The [strategy search](scripts/strategy_search.py) now evaluates **188** combinations
+across five strategy families using pinned public market data, with an automated
+GitHub Actions job and machine-readable artifact. Strategies are scored on
+**2023-07-04 to 2023-12-29** (development) plus **2024** (validation). The
+2025 interval has already been viewed in earlier work and is **not blind**.
+
+The selected 120-session / 3-name / ~monthly / 94%-invested momentum baseline
+produced +11.156% (2023 H2), +8.017% (2024) and -19.098% (2025 retrospective).
+The illustrative cost-adjusted FTSE 100 price-index tracker proxy returned
++2.69%, +5.69%, and +20.05% respectively. This does **not** show reliable
+outperformance. The 2025 strategy drawdown reached 27.749% despite the
+nominal £850 stop; losses can exceed the stop threshold before liquidation.
+
+The fixed share universe was selected with future knowledge and lacks
+historical constituent membership and corporate-action verification. The
+source audit found 2,067 invalid/missing share closes and 420 inconsistent
+OHLC readings in the underlying full source. **These returns are research
+simulations, not investment advice or executable trading results.**
+For exact methodology and limits, see
+[the study](docs/STRATEGY_SEARCH.md) and
+[its observed results](docs/OPTIMISATION_RESULTS.md).
+
+Run locally:
+
+    python scripts/strategy_search.py --output outputs/strategy_optimization.json
+
+This requires permitted outbound access to the pinned public data. It does
+not connect to IBKR. Output files remain untracked.
+
 ## Architecture
 
 | Component | Location | Permission |
