@@ -11,7 +11,7 @@ W.A.R.R.E.N. is a research-first trading system being developed for FTSE 100 equ
 - Long-only allocation, 20 symbols maximum and maximum 5% per holding.
 - £1,000 initial capital with the previously selected halt if equity falls below initial capital.
 - Transaction-cost accounting, turnover, drawdown and same-universe equal-weight passive comparison.
-- Nine local unit tests and automated GitHub Actions checks.
+- Automated GitHub Actions checks (23 unit tests at the predictive revision).
 - Deliberately no IBKR account access or live-trading code.
 
 ## Quick start (Python 3.11+)
@@ -30,8 +30,9 @@ The demo symbols and prices are synthetic, **not market performance**. Use a dai
 
 ## Broad market strategy study (October 2026)
 
-The [strategy search](scripts/strategy_search.py) now evaluates **188** combinations
-across five strategy families using pinned public market data, with an automated
+The [strategy search](scripts/strategy_search.py) initially evaluated **188** rule-based combinations
+across five strategy families; the predictive extension expands this to **252**
+configurations across seven families using pinned public market data, with an automated
 GitHub Actions job and machine-readable artifact. Strategies are scored on
 **2023-07-04 to 2023-12-29** (development) plus **2024** (validation). The
 2025 interval has already been viewed in earlier work and is **not blind**.
@@ -50,7 +51,7 @@ OHLC readings in the underlying full source. **These returns are research
 simulations, not investment advice or executable trading results.**
 For exact methodology and limits, see
 [the study](docs/STRATEGY_SEARCH.md) and
-[its observed results](docs/OPTIMISATION_RESULTS.md).
+[the predictive comparison](docs/PREDICTIVE_RESULTS.md).
 
 Run locally:
 
@@ -61,14 +62,14 @@ not connect to IBKR. Output files remain untracked.
 
 ## Predictive stochastic models (experimental)
 
-The [SDE predictive research layer](docs/PREDICTIVE_SDE.md) adds calibrated-style
-*distributional forecasts* from geometric Brownian motion (GBM) and mean-reverting
+The [SDE predictive research layer](docs/PREDICTIVE_SDE.md) adds analytical
+*distributional forecasts (not empirically calibrated probabilities)* from geometric Brownian motion (GBM) and mean-reverting
 Ornstein–Uhlenbeck (OU) daily log-return dynamics. These are analytical
 baseline models, **not trained CNNs or transformers**. Probability thresholds,
 forecast windows, portfolio concentration and exposure are configurable.
 The expanded strategy search has **252 candidate configurations** (188 prior
 rules + 64 SDE variants). All evaluations remain offline and exploratory.
-No new independent 2026 stock holdout or predictive performance is verified;
+No new independent 2026 stock holdout or reliable forecast accuracy is verified;
 2025 was already examined and is **not blind out-of-sample**.
 
 

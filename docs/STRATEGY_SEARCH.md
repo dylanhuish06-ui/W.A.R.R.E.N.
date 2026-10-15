@@ -1,11 +1,11 @@
 # Broad strategy optimisation: research, not deployment
 
-Run: \`python scripts/strategy_search.py --output outputs/strategy_optimization.json\`
+Run: `python scripts/strategy_search.py --output outputs/strategy_optimization.json`
 
 The GitHub Actions **optimisation** job downloads pinned public FTSE datasets,
-runs five strategy families and uploads all ranked trials with the dataset hash.
+runs seven strategy families (188 rule-based configurations plus 64 SDE forecasts) and uploads all ranked trials with the dataset hash.
 
-Strategies: 20/60/120-session momentum, volatility-adjusted momentum,
+Rule-based strategies: 20/60/120-session momentum, volatility-adjusted momentum,
 3/5-session mean reversion after a positive 120-session trend, dual-trend
 momentum, and an equal-weight subset control. They vary 3/5/10/20 names,
 weekly/monthly/quarterly rebalancing, 65% or 94% invested and an optional
@@ -27,3 +27,6 @@ dividends, broker fills, or whole-share execution; material multiple-testing
 risk. Future research must obtain independently corrected source prices,
 point-in-time constituents, a truly new post-selection holdout and paper
 trading validation before order placement. This branch is **offline only**.
+
+GBM and OU SDE forecasts add 64 variants for 252 total; see [forecast
+methodology](PREDICTIVE_SDE.md) and [observed comparisons](PREDICTIVE_RESULTS.md).
