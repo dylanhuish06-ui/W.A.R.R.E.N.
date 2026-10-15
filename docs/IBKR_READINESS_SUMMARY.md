@@ -56,10 +56,15 @@ account identity. Confirm the actual TWS paper-mode banner and read-only
 API setting. GitHub cloud runners **cannot** access the Mac's localhost
 TWS socket and should never receive API passwords or real account IDs.
 
-Research jobs are scheduled daily by a **tiny independent workflow dispatcher
-on main** that checks out this isolated feature branch; the trading code
-remains unmerged. The scheduled runner can validate code and public pinned
-research data but CANNOT collect private IBKR data or make a broker ready.
+The isolated GitHub workflow runs automatically on **pushes and pull requests**
+and supports manual `workflow_dispatch`. GitHub-native `schedule` events
+run only from the repository's default branch, so a recurring GitHub
+dispatcher **has NOT been installed on main**: main remains untouched pending
+approval. A separate ChatGPT readiness watch checks the branch, CI and
+evidence every **four hours**, notifying on meaningful status changes;
+it does not promise autonomous code changes or magically clear external gates.
+New commits trigger another full GitHub offline check. These checks
+CANNOT access the user's localhost IBKR socket or validate subscriptions.
 
 ## Decision requested
 
