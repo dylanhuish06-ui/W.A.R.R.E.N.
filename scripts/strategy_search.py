@@ -142,14 +142,22 @@ def make_simulator(dates, prices):
 
 def build_report(raw_shares, raw_index):
     dates, symbols, prices, excluded = load_market_csv(raw_shares)
+    # Source only guarantees complete histories from Jan 2023 onward.
+    # Trim the earlier, incomplete segment rather than interpolating data.
+    trim = next(i for i, day in enumerate(dates) if day >= "2023-01-01")
+    dates, prices = dates[trim:], prices[trim:]
     idx = index_closes(raw_index)
     audit = quality_audit(raw_shares)
-    year_starts = {y: next(i for i, d in enumerate(dates) if d >= f"{y}-01-01")
-                   for y in (2023, 2024, 2025)}
+    # Warm-up uses the first 125 sessions of 2023. Development is therefore
+    # a shorter 2023H2 period, measured against the identically dated index.
+    year_starts = {2023: 125}
+    year_starts.update({y: next(i for i, d in enumerate(dates) if d >= f"{y}-01-01")
+                        for y in (2024, 2025)})
     periods = {2023: (year_starts[2023], year_starts[2024]),
                2024: (year_starts[2024], year_starts[2025]),
                2025: (year_starts[2025], len(dates))}
-    benchmark = {str(y): tracker_proxy(idx, f"{y}-01-01", f"{y}-12-31") for y in periods}
+    benchmark = {str(y): tracker_proxy(idx, dates[periods[y][0]], dates[periods[y][1]-1])
+                 for y in periods}
     simulate = make_simulator(dates, prices)
     tested = []
     grid = candidates()
