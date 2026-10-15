@@ -21,3 +21,21 @@ jobs:
           python scripts/generate_demo_data.py --output data/demo_prices.csv
           PYTHONPATH=src python -m warren.cli backtest --prices data/demo_prices.csv --output outputs/demo_report.json
           test -s outputs/demo_report.json
+  market-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Run market data audit (pinned 2020-2026 sources; no broker)
+        run: |
+          python scripts/market_validation.py --output outputs/market_validation.json
+          test -s outputs/market_validation.json
+      - name: Upload reproducible machine-readable audit
+        uses: actions/upload-artifact@v4
+        with:
+          name: historical-research-audit
+          path: outputs/market_validation.json
+          if-no-files-found: error
