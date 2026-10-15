@@ -78,7 +78,7 @@ class ForwardGateTests(unittest.TestCase):
         lines = raw.decode().strip().splitlines()
         early = ("\n".join(lines[:271]) + "\n").encode()
         early_m = dict(manifest, price_sha256=hashlib.sha256(early).hexdigest(),
-                       membership_asof=dates[134])
+                       membership_asof=dates[134], collected_at_utc=dates[134]+"T18:00:00+00:00")
         ledger = record(early, early_m, datetime.fromisoformat(dates[135]+"T12:00:00+00:00"))
         ledger["forecasts"][0]["probability_positive"] = .99
         with self.assertRaises(ValueError):
