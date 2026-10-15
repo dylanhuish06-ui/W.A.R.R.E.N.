@@ -59,6 +59,19 @@ Run locally:
 This requires permitted outbound access to the pinned public data. It does
 not connect to IBKR. Output files remain untracked.
 
+## Predictive stochastic models (experimental)
+
+The [SDE predictive research layer](docs/PREDICTIVE_SDE.md) adds calibrated-style
+*distributional forecasts* from geometric Brownian motion (GBM) and mean-reverting
+Ornstein–Uhlenbeck (OU) daily log-return dynamics. These are analytical
+baseline models, **not trained CNNs or transformers**. Probability thresholds,
+forecast windows, portfolio concentration and exposure are configurable.
+The expanded strategy search has **252 candidate configurations** (188 prior
+rules + 64 SDE variants). All evaluations remain offline and exploratory.
+No new independent 2026 stock holdout or predictive performance is verified;
+2025 was already examined and is **not blind out-of-sample**.
+
+
 ## Architecture
 
 | Component | Location | Permission |

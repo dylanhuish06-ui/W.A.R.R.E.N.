@@ -10,6 +10,7 @@ from functools import lru_cache
 from pathlib import Path
 from market_experiment import SOURCE_URL, load_market_csv
 from market_validation import INDEX_URL, download_bytes, index_closes, tracker_proxy, quality_audit
+from sde_forecast import predict
 
 INITIAL = 1000.0
 FLOOR = 850.0
@@ -23,10 +24,13 @@ class Strategy:
     period: int
     invested: float
     defensive: bool = False
+    probability_threshold: float = 0.55
+    drift_shrinkage: float = 0.35
 
     @property
     def name(self):
-        return f"{self.family}-{self.lookback}-{self.n}-{self.period}-{self.invested:.2f}-{int(self.defensive)}"
+        return (f"{self.family}-{self.lookback}-{self.n}-{self.period}-{self.invested:.2f}-"
+                f"{int(self.defensive)}-{self.probability_threshold:.2f}-{self.drift_shrinkage:.2f}")
 
 
 def candidates():
@@ -42,6 +46,13 @@ def candidates():
             looks, nums, periods, (.65, .94), defensives
         ):
             items.append(Strategy(family, look, n, period, exp, defensive))
+    # Forecast families are deliberately treated as challengers to the
+    # conventional benchmarks, not as validated trade recommendations.
+    for family, look, n, period, exp, p in itertools.product(
+        ("sde_gbm", "sde_ou"), (60, 120), (3, 5), (5, 21),
+        (.65, .94), (.52, .60)
+    ):
+        items.append(Strategy(family, look, n, period, exp, False, p, .35))
     assert len(items) == len(set(s.name for s in items))
     return items
 
@@ -83,6 +94,36 @@ def make_simulator(dates, prices):
             raise ValueError("Unknown strategy family")
         return tuple(j for _, j in sorted(scored, key=lambda z: (-z[0], z[1])))
 
+    @lru_cache(maxsize=8000)
+    def sde_rankings(family, look, horizon, t, drift_shrinkage):
+        """Forecast only through end-of-day t; independent of current fill day."""
+        output = []
+        for j in range(m):
+            closes = [prices[k][j] for k in range(t-look, t+1)]
+            try:
+                f = predict(closes, horizon, family.removeprefix("sde_"), drift_shrinkage)
+            except ValueError:
+                continue  # Data is not safe for probabilistic prediction: abstain.
+            output.append((j, f.expected_simple_return, f.probability_positive,
+                           f.lower_decile_return, f.sd_log_return))
+        return tuple(output)
+
+    def sde_picks(spec, t):
+        forecasts = sde_rankings(spec.family, spec.lookback, spec.period, t, spec.drift_shrinkage)
+        per_position_gbp = INITIAL * spec.invested / spec.n
+        # Entry + exit: two £1 min commissions, 2 x 5bp slippage and 50bp duty.
+        minimum_expected_edge = .006 + 2.0 / per_position_gbp
+        matches = []
+        for j, expected, probability, lower_decile, volatility in forecasts:
+            if (probability >= spec.probability_threshold
+                    and expected > minimum_expected_edge
+                    and lower_decile > -.20):
+                # Penalise severe left-tail risk, rather than only rewarding
+                # overfit point forecasts with high expected returns.
+                score = expected - .10 * max(0.0, -lower_decile)
+                matches.append((score, j))
+        return tuple(j for _, j in sorted(matches, key=lambda z: (-z[0], z[1]))[:spec.n])
+
     def simulate(start, end, spec, charge_costs=True):
         if start < max(122, spec.lookback+2) or end <= start or end > len(dates):
             raise ValueError("Insufficient data")
@@ -98,7 +139,8 @@ def make_simulator(dates, prices):
             if (t-start) % spec.period == 0 or (stop_date is not None and any(positions)):
                 target = [0.0] * m
                 if stop_date is None and (not spec.defensive or breadth(t-1) >= .50):
-                    picks = rank(spec.family, spec.lookback, t-1)[:spec.n]
+                    picks = (sde_picks(spec, t-1) if spec.family.startswith("sde_")
+                             else rank(spec.family, spec.lookback, t-1)[:spec.n])
                     for j in picks:
                         target[j] = equity * spec.invested / len(picks)
                 # Liquidate first; avoid pointless micro-trades and preserve cash-only.
@@ -193,6 +235,7 @@ def build_report(raw_shares, raw_index):
         "excluded_for_missing_share_prices": excluded,
         "candidates_count": len(grid),
         "families": sorted(set(c.family for c in grid)),
+        "predictive_method": "Analytic GBM and OU SDE probability distributions; no neural network trained",
         "periods": {str(y): [dates[a], dates[b-1]] for y, (a, b) in periods.items()},
         "passive_cost_adjusted_price_index_proxy": benchmark,
         "optimization": "2023 development and 2024 validation only; score = 55% worst-year excess + 45% average excess - 35% worst-year drawdown - 15% excess instability - 12 per stop",
@@ -200,12 +243,12 @@ def build_report(raw_shares, raw_index):
         "top_10": ranked[:10],
         "all_optimization_candidates": ranked,
         "diagnostic_2025_status": "ALREADY-VIEWED, NOT FRESH BLIND HOLDOUT",
-        "holdout_2026_status": "NOT RUN; no matching 2026 individual-stock dataset",
+        "holdout_2026_status": "NOT RUN; no matching verified 2026 individual-stock dataset",
         "warnings": [
             "Survivorship-biased fixed share universe, no point-in-time FTSE membership",
             "Raw OHLC inconsistencies and share corporate actions unverified",
             "Fractional-share assumption and next-close idealised execution",
-            "188+ alternative searches induce multiple-testing/overfitting risk",
+            "Hundreds of model/configuration trials induce severe multiple-testing/overfitting risk",
             "Tracker proxy is FTSE price-only, excludes dividend reinvestment and ETF fees",
             "Broker fees approximate: £1 min commission plus 5bp slippage and 50bp SDRT on buys",
         ],
