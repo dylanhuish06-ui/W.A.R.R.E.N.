@@ -73,6 +73,16 @@ No new independent 2026 stock holdout or reliable forecast accuracy is verified;
 2025 was already examined and is **not blind out-of-sample**.
 
 
+## Probability calibration and forward gate
+
+The [retrospective 2025 forecast audit](docs/FORECAST_CALIBRATION_RESULTS.md)
+shows only marginal 21-session Brier improvement over a constant 50% forecast;
+shorter-horizon results generally show no skill. This is not proof of alpha.
+The [forward test ledger](docs/FORWARD_GATE.md) requires future post-freeze
+prediction records and separately matured observations; it has not yet
+received any independently verified live-market input. Broker actions remain
+disabled.
+
 ## Architecture
 
 | Component | Location | Permission |
