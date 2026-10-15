@@ -55,3 +55,20 @@ jobs:
           name: exploratory-strategy-search
           path: outputs/strategy_optimization.json
           if-no-files-found: error
+  forecast-calibration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Retrospective prequential forecast scoring (no broker)
+        run: |
+          python scripts/forecast_calibration.py --output outputs/forecast_calibration.json
+          test -s outputs/forecast_calibration.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: historical-forecast-calibration
+          path: outputs/forecast_calibration.json
+          if-no-files-found: error
