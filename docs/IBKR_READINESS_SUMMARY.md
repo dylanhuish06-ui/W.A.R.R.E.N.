@@ -147,3 +147,12 @@ Approval to merge remains ungranted.
   \`scripts/prospective_evaluation.py\`; tests are synthetic only.
 - No broker/API connection or paper/live orders; user independently
   preparing IBKR API. Main remains unmerged.
+
+## 16 October — Gates 1–3 outcome report
+
+Independent market-data and forecast-performance gates remain **blocked**.
+The software adds calendar-backed point-in-time data intake, frozen
+pre-recorded causal benchmark probabilities and prospective H21 multi-origin
+acceptance tests. 81 unit tests and all offline CI jobs passed. See
+`docs/GATES_1_2_3_RESULTS.md` for measured 2025 retrospective comparisons.
+The 2025 GBM/OU models do not yet demonstrate independently verified alpha.
