@@ -80,3 +80,24 @@ IBKR official docs:
 - https://www.interactivebrokers.com/campus/trading-lessons/installing-configuring-tws-for-the-api/
 - https://www.interactivebrokers.com/docs/tws-api/doc/introduction
 - https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows
+
+
+## New October 16: operational safety simulation
+
+- Deterministic **whole-share** synthetic rebalancing with stale quote
+  checks, explicit GBp -> GBP conversion, specified LSE contract identity,
+  conservative two-sided bid/ask and dealing-cost estimates, long-only
+  cash constraints, gross/name concentration and turnover limits.
+- Offline **simulation-only** position/cash reconciliation and plans signed
+  with reproducible input SHA-256 hashes, plus hash-chained audit events.
+- SQLite local replay registry with default persistent HALT, explicit
+  simulation-only acknowledgement, duplicate-plan suppression after
+  restart, transaction rollback on failure and audit continuity checks.
+- Synthetic end-to-end rehearsal on every isolated readiness CI run;
+  upload machine-readable \`outputs/offline_rehearsal.json\`, with
+  zero broker connections and zero submitted orders.
+- These are **simulation controls**, not actual IBKR paper-session
+  validation; external data/forward skill/account/runbook gates stay
+  blocked and merge approval is unchanged.
+
+See \`docs/PAPER_SANDBOX.md\` and \`docs/OFFLINE_REPLAY_LEDGER.md\`.

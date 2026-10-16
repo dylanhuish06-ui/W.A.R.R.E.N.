@@ -22,6 +22,7 @@ jobs:
           python scripts/market_validation.py --output outputs/market_validation.json
           python scripts/forecast_calibration.py --output outputs/forecast_calibration.json
           python scripts/ibkr_readiness.py --output outputs/ibkr_readiness.json
+          python scripts/paper_rehearsal.py --output outputs/offline_rehearsal.json
           python - <<'PY'
           import json
           r=json.load(open("outputs/ibkr_readiness.json"))
@@ -37,4 +38,5 @@ jobs:
             outputs/market_validation.json
             outputs/forecast_calibration.json
             outputs/ibkr_readiness.json
+            outputs/offline_rehearsal.json
           if-no-files-found: error
