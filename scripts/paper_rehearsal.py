@@ -25,12 +25,12 @@ def run_rehearsal(*, now: datetime) -> dict:
         "asof_utc": quoted_at, "cash_currency": "GBP", "cash_gbp": "950.00",
         "positions": {}, "open_orders": [],
         "quotes": {
-            "EXAMPLE_A": {
+            "EXAMPLEA": {
                 "currency": "GBP", "quote_unit": "GBP", "exchange": "LSE",
                 "security_type": "STK", "conid": 100000001,
                 "bid": "19.99", "ask": "20.01", "asof_utc": quoted_at,
             },
-            "EXAMPLE_B": {
+            "EXAMPLEB": {
                 "currency": "GBP", "quote_unit": "GBp", "exchange": "LSE",
                 "security_type": "STK", "conid": 100000002,
                 "bid": "989", "ask": "991", "asof_utc": quoted_at,
@@ -38,7 +38,7 @@ def run_rehearsal(*, now: datetime) -> dict:
         },
     }
     proposal = plan_rebalance(
-        snapshot, {"EXAMPLE_A": ".20", "EXAMPLE_B": ".15"},
+        snapshot, {"EXAMPLEA": ".20", "EXAMPLEB": ".15"},
         now=now, kill_switch=False, allow_simulation=True,
     )
     with TemporaryDirectory(prefix="warren-offline-") as tmp:
