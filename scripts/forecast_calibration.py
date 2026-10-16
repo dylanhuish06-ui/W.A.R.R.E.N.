@@ -35,6 +35,7 @@ class Observation:
     expected_return: float
     lower_decile: float
     upper_decile: float
+    baseline_probability: float = 0.5
 
 
 def schedule(dates: list[str], start: int, end: int, horizon: int, lookback: int) -> list[int]:
@@ -54,6 +55,68 @@ def _daily_moves_valid(prices: list[list[float]], j: int, start: int, end: int) 
         if abs(math.log(b / a)) > 0.75:
             return False
     return True
+
+
+def matured_hit_rate(prices: list[list[float]], symbol_col: int,
+                     origin: int, lookback: int, horizon: int,
+                     prior_strength: float = 6.0) -> float:
+    """Smoothed hit-rate estimated using only PREVIOUSLY MATURED labels.
+
+    Prior origin+k horizon must not exceed prediction origin. Nonoverlapping
+    historical event windows (stride=horizon) mitigate duplicated labels.
+    This is a causal comparator, not a claimed calibrated forecast.
+    """
+    if not (1 <= horizon <= lookback and origin >= lookback):
+        raise ValueError("Invalid baseline window")
+    if prior_strength <= 0 or not math.isfinite(prior_strength):
+        raise ValueError("Invalid baseline prior")
+    positive = 0
+    events = 0
+    # Each historical label matures at or before the current origin.
+    for start in range(origin - horizon, origin - lookback - 1, -horizon):
+        a, z = prices[start][symbol_col], prices[start + horizon][symbol_col]
+        if not (math.isfinite(a) and math.isfinite(z) and a > 0 and z > 0):
+            raise ValueError("Corrupt historical data")
+        if abs(math.log(z / a)) > .75:
+            continue
+        positive += z > a
+        events += 1
+    return (positive + prior_strength * .5) / (events + prior_strength)
+
+
+def _paired_brier(items: list[Observation], probability_attribute: str) -> float:
+    return sum((getattr(x, probability_attribute) - x.positive) ** 2
+               for x in items) / len(items)
+
+
+def _paired_logloss(items: list[Observation], probability_attribute: str) -> float:
+    total = 0.0
+    for row in items:
+        p = max(EPS, min(1 - EPS, getattr(row, probability_attribute)))
+        total += -row.positive * math.log(p) - (1 - row.positive) * math.log1p(-p)
+    return total / len(items)
+
+
+def origin_cluster_differences(items: list[Observation]) -> dict:
+    """Distribution of per-origin mean Brier improvement vs causal baseline.
+
+    Descriptive only: not a t-test and not independent, as assets share market
+    risk and origins share underlying return regimes.
+    """
+    groups = defaultdict(list)
+    for x in items:
+        groups[x.origin].append((x.baseline_probability - x.positive) ** 2
+                                - (x.probability - x.positive) ** 2)
+    values = [sum(g) / len(g) for _, g in sorted(groups.items())]
+    n = len(values)
+    mean = sum(values) / n
+    spread = (sum((x - mean)**2 for x in values)/(n - 1))**.5 if n > 1 else None
+    return {
+        "origin_clusters": n,
+        "mean_brier_improvement_per_origin": round(mean, 8),
+        "stddev_origin_mean_difference": round(spread, 8) if spread is not None else None,
+        "note": "Descriptive between-date variability only; correlated windows and common factors remain",
+    }
 
 
 def observations(
@@ -86,6 +149,7 @@ def observations(
                 forecast.probability_positive, int(outcome > 0), outcome,
                 forecast.expected_simple_return, forecast.lower_decile_return,
                 forecast.upper_decile_return,
+                matured_hit_rate(prices, j, origin, lookback, horizon),
             ))
     return results, {
         "origins": len(origins), "potential_asset_forecasts": len(origins) * len(symbols),
@@ -136,12 +200,19 @@ def summarize(items: list[Observation]) -> dict:
             "observed_positive_fraction": round(frequency, 5) if count else None,
         })
     model_brier = bs / n
+    causal_brier = _paired_brier(items, "baseline_probability")
+    causal_logloss = _paired_logloss(items, "baseline_probability")
     return {
         "n": n,
         "observed_positive_fraction": round(sum(o.positive for o in items) / n, 6),
         "mean_forecast_probability": round(sum(o.probability for o in items) / n, 6),
         "brier": round(model_brier, 6),
         "brier_constant_0_5": 0.25,
+        "brier_causal_hit_rate": round(causal_brier, 6),
+        "brier_skill_vs_causal_hit_rate": round(1 - model_brier / causal_brier, 6)
+            if causal_brier > 0 else None,
+        "log_loss_causal_hit_rate": round(causal_logloss, 6),
+        "origin_cluster_differences": origin_cluster_differences(items),
         "brier_skill_vs_0_5": round(1 - model_brier / 0.25, 6),
         "log_loss": round(log_loss / n, 6),
         "log_loss_constant_0_5": round(math.log(2), 6),
@@ -189,7 +260,7 @@ def build_report(raw: bytes) -> dict:
             "maturity_rule": "Only outcomes wholly inside the assessment period are scored",
             "forecast_information": "Prices through and including origin close only; no outcome leakage",
             "reliability_bins": "Fixed 0.0-0.2-0.4-0.6-0.8-1.0",
-            "score_rule": "Proper Brier and log loss; constant 0.5 comparator on identical events",
+            "score_rule": "Proper Brier/log loss; constant 0.5 and non-overlapping matured historical hit-rate with 0.5 Beta-style smoothing prior, both matched events",
             "interval": "Gaussian log-return predictive central 80% (10th–90th quantiles)",
             "anomaly_policy": "Exclude >75% absolute daily log-return on future evaluation path; record counts and acknowledge post-outcome filtering",
             "no_training_on_assessment_year": "Parameters are fixed from prior study; no supervised calibration fitted",

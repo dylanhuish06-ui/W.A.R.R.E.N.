@@ -101,3 +101,26 @@ IBKR official docs:
   blocked and merge approval is unchanged.
 
 See \`docs/PAPER_SANDBOX.md\` and \`docs/OFFLINE_REPLAY_LEDGER.md\`.
+
+## October 16 research/data and cost preparation (no IBKR required)
+
+- Added `scripts/pit_data_audit.py` for licensed, user-supplied historical
+  prices and point-in-time FTSE membership, joined on both ticker and ISIN.
+  Reports source hashes, membership-known dates, missing member prices,
+  adjustment flags and GBP/GBp conventions. **Cannot independently certify**
+  source correctness or licensed use and does not clear the data gate.
+- Added per-security causal historical-hit-rate comparator to the GBM/OU
+  prequential validation, using *only matured past outcomes* at each origin.
+  The original constant-50% benchmark is retained; the time-causal
+  comparator is matched on the identical scored events. Results from
+  2025 remain retrospective and NOT blind out-of-sample.
+- Added `scripts/cost_sensitivity.py` with three illustrative cash-only
+  whole-share fee scenarios including bid/ask, explicit duty applicability,
+  minimum commission and slippage. Scenarios are unverified, not IBKR prices.
+- CI runs reproducible offline fee scenarios. The licensed data intake audit
+  is test-covered with synthetic fixtures; CI deliberately does not download
+  or publish restricted provider material.
+
+User is preparing local paper API separately. **IBKR broker-specific gate 7
+remains deferred**, with no order-capable integration or paper/live trades.
+Approval to merge remains ungranted.

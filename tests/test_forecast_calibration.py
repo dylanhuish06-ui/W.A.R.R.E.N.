@@ -6,7 +6,7 @@ from datetime import date, timedelta
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
-from forecast_calibration import Observation, observations, schedule, summarize
+from forecast_calibration import Observation, observations, schedule, summarize, matured_hit_rate
 
 
 class ForecastCalibrationTests(unittest.TestCase):
@@ -57,6 +57,24 @@ class ForecastCalibrationTests(unittest.TestCase):
     def test_no_empty_summary(self):
         with self.assertRaises(ValueError):
             summarize([])
+
+
+    def test_causal_baseline_not_affected_by_future(self):
+        a = matured_hit_rate(self.prices, 0, 150, 120, 21)
+        modified = [row.copy() for row in self.prices]
+        modified[151][0] *= 10
+        modified[172][0] *= 10
+        b = matured_hit_rate(modified, 0, 150, 120, 21)
+        self.assertEqual(a, b)
+
+    def test_causal_comparison_and_origin_cluster(self):
+        rows, _ = observations(self.dates, self.symbols, self.prices,
+                               140, 220, "gbm", 120, 5)
+        result = summarize(rows)
+        self.assertGreater(result["origin_cluster_differences"]["origin_clusters"], 1)
+        self.assertIn("brier_causal_hit_rate", result)
+        self.assertIn("brier_skill_vs_causal_hit_rate", result)
+        self.assertTrue(all(0 < row.baseline_probability < 1 for row in rows))
 
 
 if __name__ == "__main__":

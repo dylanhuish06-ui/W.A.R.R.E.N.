@@ -103,3 +103,13 @@ An initial-capital floor of exactly £1,000 may halt trading almost immediately 
 This repository is currently public. **Never commit account credentials, IBKR IDs, API secrets, portfolio statements, proprietary strategy inputs or actual brokerage data.** Consider switching to private repository visibility for later phases.
 
 See docs/ROADMAP.md for the next research, ML, paper-trading and live-readiness milestones.
+
+## Preparation while IBKR paper API is configured
+
+The isolated readiness branch now contains an external-evidence-first
+[point-in-time data intake audit](docs/POINT_IN_TIME_DATA.md), a
+[configurable cost sensitivity analysis](docs/COST_SENSITIVITY.md) and a
+causal historical-hit-rate comparator within forecast calibration.
+These are independent of the user's broker login and cannot clear
+readiness gates without verified real-world input. No trading or
+broker-facing API has been enabled.
