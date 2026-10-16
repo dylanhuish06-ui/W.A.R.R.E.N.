@@ -113,3 +113,16 @@ causal historical-hit-rate comparator within forecast calibration.
 These are independent of the user's broker login and cannot clear
 readiness gates without verified real-world input. No trading or
 broker-facing API has been enabled.
+
+
+## Gates 1–3 independent-evidence acceptance
+
+Research-only code now supports a licensed exchange-calendar-backed
+[point-in-time security data audit](docs/POINT_IN_TIME_DATA.md),
+immutable-intent [prospective prediction recording](docs/FORWARD_GATE.md)
+and a [prespecified H21 forecast skill test](docs/PROSPECTIVE_EVALUATION.md)
+against pre-recorded causal historical base rates. **These gates remain
+blocked** without independently auditable licensed FTSE security data,
+genuine matured future forecasts and after-cost alpha. CI tests synthetic
+safety and logic; it cannot generate missing future outcomes or certify a
+self-attested vendor manifest.

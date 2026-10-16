@@ -16,7 +16,7 @@ from datetime import date, datetime, timezone
 from pathlib import Path
 
 from sde_forecast import predict
-from forecast_calibration import Observation, summarize
+from forecast_calibration import Observation, summarize, matured_hit_rate
 
 FROZEN_RESEARCH_COMMIT = "266a0b16e6ce6d2047f7a379823bfb84a9f5b584"
 RESEARCH_CUTOFF = date(2026, 10, 15)
@@ -100,7 +100,8 @@ def record(raw: bytes, manifest: dict, now: datetime) -> dict:
     if acquired > now or acquired.date().isoformat() < origin:
         raise ValueError("Quote snapshot must have been acquired before forecast recording")
     records = []
-    for symbol in symbols:
+    panel = [[prices[s][k] for s in symbols] for k in range(len(dates))]
+    for j, symbol in enumerate(symbols):
         series = prices[symbol]
         for model, lookback, horizon, shrink in FROZEN_CONFIGS:
             f = predict(series[-(lookback+1):], horizon, model, shrink)
@@ -109,6 +110,8 @@ def record(raw: bytes, manifest: dict, now: datetime) -> dict:
                 "horizon": horizon, "shrinkage": shrink,
                 "origin_date": origin, "origin_adjusted_close_gbp": series[-1],
                 "probability_positive": f.probability_positive,
+                "causal_baseline_probability": matured_hit_rate(
+                    panel, j, len(dates)-1, lookback, horizon),
                 "expected_return": f.expected_simple_return,
                 "lower_decile": f.lower_decile_return,
                 "upper_decile": f.upper_decile_return,
@@ -164,6 +167,11 @@ def score(raw: bytes, manifest: dict, ledger: dict, now: datetime) -> dict:
         symbol, model = item["symbol"], item["model"]
         if model not in by_model or item["horizon"] != 21 or item["lookback"] != 120 or item["shrinkage"] != .35:
             raise ValueError("Forecast config not frozen")
+        if ("causal_baseline_probability" not in item or
+                not isinstance(item["causal_baseline_probability"], (int,float)) or
+                not math.isfinite(item["causal_baseline_probability"]) or
+                not 0 < item["causal_baseline_probability"] < 1):
+            raise ValueError("Missing or invalid pre-recorded causal comparator")
         original = prices[symbol][i]
         if abs(original - item["origin_adjusted_close_gbp"]) > 1e-8:
             raise ValueError("Revised as-of price; independently reconcile corporate actions first")
@@ -171,13 +179,27 @@ def score(raw: bytes, manifest: dict, ledger: dict, now: datetime) -> dict:
         by_model[model].append(Observation(
             symbol, origin, dates[i + 21], item["probability_positive"],
             int(realized > 0), realized, item["expected_return"],
-            item["lower_decile"], item["upper_decile"]))
+            item["lower_decile"], item["upper_decile"],
+            item["causal_baseline_probability"]))
     return {
         "title": "Post-freeze, previously recorded SDE prediction outcomes",
         "source_ledger_sha256": ledger["content_sha256"],
         "outcome_quotes_sha256": digest(raw),
         "origin": origin, "maturity": dates[i + 21],
+        "prediction_recorded_at_utc": ledger["recorded_at_utc"],
+        "horizon_sessions": 21,
         "model_metrics": {k: summarize(v) for k, v in by_model.items()},
+        "prospective_observations": [
+            {"issuer": o.symbol, "origin": o.origin, "maturity": o.maturity,
+             "model": model, "model_probability": o.probability,
+             "causal_baseline_probability": o.baseline_probability,
+             "positive": o.positive,
+             "realized_return": o.realized_return,
+             "lower_decile": o.lower_decile,
+             "upper_decile": o.upper_decile,
+             "origin_ledger_sha256": ledger["content_sha256"]}
+            for model, vals in by_model.items() for o in vals
+        ],
         "independent_evidence_required": "Provider attestations and timestamps are not independently verified or tamper-proof",
         "audit_approved": False,
         "paper_orders_enabled": False, "live_orders_enabled": False,

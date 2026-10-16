@@ -45,3 +45,14 @@ a readiness gate automatically based on provider-supplied strings.
 Do not commit raw licensed market data, account information or secrets.
 The complete point-in-time historical constituents and corporate-actions
 require licensed data and independent provider documentation, still pending.
+
+
+### Trading-session completeness addition (Gate 1)
+
+For a stronger audit, pass \`--calendar /private/licensed_calendar.csv\` with
+exact fields \`date,source_ref\`, one row per exchange session. This catches
+whole-market missing dates that cannot be discovered from available price
+rows alone. Duplicate dates and quotes on unscheduled days are rejected.
+A synthetic calendar or metadata claim does NOT establish data provenance,
+corporate-action correctness, delisted issuers or licensing. All source
+files remain private. No independent dataset has yet been obtained.

@@ -309,6 +309,8 @@ def main() -> None:
         "retrospective_2025_NOT_BLIND": {
             tag: {"brier": r["scores"]["brier"],
                   "skill_vs_0_5": r["scores"]["brier_skill_vs_0_5"],
+                  "causal_baseline_brier": r["scores"]["brier_causal_hit_rate"],
+                  "skill_vs_causal_baseline": r["scores"]["brier_skill_vs_causal_hit_rate"],
                   "central_80_coverage": r["scores"]["central_80pct_interval_coverage"],
                   "n": r["scores"]["n"]}
             for tag, r in report["results"]["2025"].items() if r["scores"]

@@ -124,3 +124,26 @@ See \`docs/PAPER_SANDBOX.md\` and \`docs/OFFLINE_REPLAY_LEDGER.md\`.
 User is preparing local paper API separately. **IBKR broker-specific gate 7
 remains deferred**, with no order-capable integration or paper/live trades.
 Approval to merge remains ungranted.
+
+
+## Gates 1–3 software acceptance hardening (October 16)
+
+- Gate 1: enhanced point-in-time membership/ISIN/GBP-unit data intake now
+  optionally checks against a separately sourced licensed trading calendar.
+  **No point-in-time FTSE stock-level licensed data has been procured or
+  externally certified. Gate 1 remains BLOCKED.**
+- Gate 2: frozen forecasts include a *pre-recorded causal baseline*, evidence
+  digest, observation output and strict 21-session maturity. New reporting
+  rejects hindsight-reconstructed baselines and duplicate prediction
+  dates. **No real post-freeze matured forecasts. Gate 2 remains BLOCKED.**
+- Gate 3: matched GBM/OU forward evidence evaluator enforces at least
+  12 non-overlapping origin groups spanning 300 calendar days, >=25
+  issuers, positive origin-cluster-bootstrap improvement, better
+  Brier/log loss than the pre-recorded causal baseline, ECE <=5% and
+  central-80% interval coverage 72–88%. Even hypothetical statistical
+  pass CANNOT override independent-data or after-cost proof. 2025 is
+  retrospectively contaminated. **Gate 3 remains BLOCKED.**
+- Scripts: \`scripts/pit_data_audit.py\`, \`scripts/forward_gate.py\`,
+  \`scripts/prospective_evaluation.py\`; tests are synthetic only.
+- No broker/API connection or paper/live orders; user independently
+  preparing IBKR API. Main remains unmerged.

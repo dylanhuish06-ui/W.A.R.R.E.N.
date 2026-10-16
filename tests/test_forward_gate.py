@@ -61,6 +61,10 @@ class ForwardGateTests(unittest.TestCase):
         result = score(raw, manifest, ledger, datetime(2027, 3, 11, tzinfo=timezone.utc))
         self.assertFalse(result["audit_approved"])
         self.assertEqual(result["model_metrics"]["gbm"]["n"], 2)
+        self.assertEqual(len(result["prospective_observations"]), 4)
+        self.assertIn("brier_skill_vs_causal_hit_rate", result["model_metrics"]["gbm"])
+        self.assertTrue(all(0 < f["causal_baseline_probability"] < 1
+                            for f in ledger["forecasts"]))
         self.assertEqual(result["model_metrics"]["ou"]["n"], 2)
 
     def test_unmatured_rejected(self):
@@ -72,6 +76,23 @@ class ForwardGateTests(unittest.TestCase):
         ledger = record(early, early_m, datetime.fromisoformat(dates[140]+"T12:00:00+00:00"))
         with self.assertRaises(ValueError):
             score(early, early_m, ledger, datetime(2027, 3, 11, tzinfo=timezone.utc))
+
+    def test_pre_recorded_comparator_required(self):
+        raw, manifest, dates = fixture()
+        lines = raw.decode().strip().splitlines()
+        early = ("\n".join(lines[:271]) + "\n").encode()
+        early_m = dict(manifest, price_sha256=hashlib.sha256(early).hexdigest(),
+                       membership_asof=dates[134],
+                       collected_at_utc=dates[134] + "T18:00:00+00:00")
+        ledger = record(early, early_m,
+                        datetime.fromisoformat(dates[135] + "T12:00:00+00:00"))
+        ledger["forecasts"][0].pop("causal_baseline_probability")
+        from forward_gate import digest, canonical_json
+        ledger["content_sha256"] = digest(canonical_json(
+            {k: v for k, v in ledger.items() if k != "content_sha256"}))
+        with self.assertRaisesRegex(ValueError, "comparator"):
+            score(raw, manifest, ledger,
+                  datetime(2027, 3, 11, tzinfo=timezone.utc))
 
     def test_modified_ledger_rejected(self):
         raw, manifest, dates = fixture()

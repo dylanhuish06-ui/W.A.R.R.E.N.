@@ -64,3 +64,27 @@ predictions and report Brier skill, log loss, reliability, interval coverage,
 uncertainty intervals clustered by trading date and issuer, and separate
 after-cost whole-share strategy returns vs an actual investable total-return
 FTSE tracker. No IBKR orders are triggered by these scripts.
+
+
+## Causal benchmark frozen at prediction time (Gate 2)
+
+The forward recorder now embeds \`causal_baseline_probability\` in each
+individual forecast record. It is computed from the stock's prior **matured**
+21-session positive-return labels, in non-overlapping windows, with a
+fixed Beta-style 0.5 pseudo-prior (strength 6). A missing or tampered
+baseline is rejected at score time. The model forecast, its baseline,
+reference-price evidence and 21-session maturity are included in the
+outcome report. This ensures the benchmark is not calculated from outcomes
+seen only after the prediction. The recorded data remain self-attested
+until independently timestamped.
+
+A second script, \`scripts/prospective_evaluation.py\`, requires at least
+12 non-overlapping prediction cohorts spanning 300 calendar days and
+at least 25 securities, with bootstrap by forecast-origin date and
+causal-benchmark proper-score/coverage comparisons. See
+[PROSPECTIVE_EVALUATION.md](PROSPECTIVE_EVALUATION.md).
+
+These are scientific **sample prerequisites**, not proof of a reliable
+trading advantage; any positive screen still requires independent data,
+execution assumptions and an after-cost investable benchmark. Today no
+matured new-sample forecast/evidence exists.

@@ -19,6 +19,7 @@ from collections import defaultdict
 PRICE_FIELDS = ("date","symbol","isin","close","unit","currency",
                 "split_adjusted","dividend_adjusted","source_ref")
 MEMBER_FIELDS = ("symbol","isin","member_from","member_to","known_at","source_ref")
+CALENDAR_FIELDS = ("date","source_ref")
 
 
 def _hash(raw: bytes) -> str:
@@ -70,7 +71,7 @@ def _manifest(raw_prices: bytes, raw_members: bytes, manifest: dict) -> None:
         raise ValueError("Manifest date must be timezone-aware")
 
 
-def audit(raw_prices: bytes, raw_members: bytes, manifest: dict) -> dict:
+def audit(raw_prices: bytes, raw_members: bytes, manifest: dict, *, exchange_calendar: bytes | None = None) -> dict:
     """Validate structure, historical effective dates and currency normalization.
 
     Audit remains EXTERNALLY UNVERIFIED even when internal checks succeed.
@@ -123,8 +124,22 @@ def audit(raw_prices: bytes, raw_members: bytes, manifest: dict) -> dict:
                    for lo,hi,known in members.get((sym,isin), [])):
             issues["price_without_known_membership"] += 1
 
+    # Require an actual licensed calendar for date-wide coverage checks.
+    # Without one, a missing entire day is invisible in the price panel.
+    calendar_dates = None
+    if exchange_calendar is not None:
+        calendar_dates = set()
+        for row in _rows(exchange_calendar, CALENDAR_FIELDS):
+            if not row["source_ref"]:
+                raise ValueError("Calendar source citation required")
+            d = _date(row["date"])
+            if d in calendar_dates:
+                raise ValueError("Duplicated session in exchange calendar")
+            calendar_dates.add(d)
+        issues["quotes_on_nontrading_days"] += len(dates - calendar_dates)
+        issues["missing_calendar_sessions"] += len(calendar_dates - dates)
     missing=0
-    for dt in dates:
+    for dt in (calendar_dates if calendar_dates is not None else dates):
         active={(sym,isin) for (sym,isin), intervals in members.items()
                 if any(lo<=dt and (hi is None or dt<=hi) and known<=dt
                        for lo,hi,known in intervals)}
@@ -150,6 +165,9 @@ def audit(raw_prices: bytes, raw_members: bytes, manifest: dict) -> dict:
         "security_issuers":len({isin for _,_,isin in quoted}),
         "rows":len(quoted),
         "membership_intervals":sum(len(x) for x in members.values()),
+        "calendar_sessions":len(calendar_dates) if calendar_dates is not None else None,
+        "full_exchange_calendar_supplied":calendar_dates is not None,
+        "full_exchange_calendar_independently_verified":False,
         "issues":dict(issues),
         "warnings":[
             "Manifest/licence/source strings are attestations, NOT independently verified provenance",
@@ -167,10 +185,12 @@ def main():
     ap.add_argument("--prices",type=Path,required=True)
     ap.add_argument("--membership",type=Path,required=True)
     ap.add_argument("--manifest",type=Path,required=True)
+    ap.add_argument("--calendar",type=Path,help="Licensed exact trading session calendar CSV")
     ap.add_argument("--output",type=Path,required=True)
     args=ap.parse_args()
     r=audit(args.prices.read_bytes(),args.membership.read_bytes(),
-            json.loads(args.manifest.read_text(encoding="utf-8")))
+            json.loads(args.manifest.read_text(encoding="utf-8")),
+            exchange_calendar=args.calendar.read_bytes() if args.calendar else None)
     args.output.parent.mkdir(parents=True,exist_ok=True)
     args.output.write_text(json.dumps(r,indent=2)+"\n",encoding="utf-8")
     print(json.dumps({"status":r["status"],"issues":r["issues"],

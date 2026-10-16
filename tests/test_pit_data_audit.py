@@ -81,5 +81,27 @@ class PointInTimeDataTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,"Duplicate"):
             audit(raw,m,meta)
 
+
+    def test_calendar_detects_missing_entire_trading_day(self):
+        raw, mem, meta = self.bundle()
+        calendar = csvb(["date","source_ref"], [
+            ["2026-09-01","licensed calendar"],
+            ["2026-09-02","licensed calendar"],
+            ["2026-09-03","licensed calendar"],
+            ["2026-09-04","licensed calendar"]])
+        outcome = audit(raw, mem, meta, exchange_calendar=calendar)
+        self.assertFalse(outcome["structural_validation_passed"])
+        self.assertEqual(outcome["issues"]["missing_calendar_sessions"], 1)
+        self.assertFalse(outcome["full_exchange_calendar_independently_verified"])
+
+    def test_calendar_rejects_unscheduled_prices(self):
+        raw, mem, meta = self.bundle()
+        calendar = csvb(["date","source_ref"], [
+            ["2026-09-01","licensed calendar"],
+            ["2026-09-02","licensed calendar"]])
+        outcome = audit(raw, mem, meta, exchange_calendar=calendar)
+        self.assertEqual(outcome["issues"]["quotes_on_nontrading_days"], 1)
+        self.assertFalse(outcome["candidate_data_fit_for_backtest"])
+
 if __name__=="__main__":
     unittest.main()
