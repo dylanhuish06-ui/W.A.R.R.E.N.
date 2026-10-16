@@ -59,8 +59,12 @@ class OfflineReplayTests(unittest.TestCase):
                 ledger.replay_once(self.snapshot, self.plan, now=self.now)
             chain = ledger.verify_chain()
         with OfflineReplayLedger(self.db) as ledger:
-            self.assertFalse(ledger.halted)
-            self.assertEqual(ledger.verify_chain(), chain)
+            self.assertTrue(ledger.halted)
+            self.assertNotEqual(ledger.verify_chain(), chain)
+            with self.assertRaisesRegex(SafetyBlock, "kill switch"):
+                ledger.replay_once(self.snapshot, self.plan, now=self.now)
+            ledger.enable_offline_only(
+                acknowledgement=ACKNOWLEDGEMENT, operator_confirmed=True)
             with self.assertRaisesRegex(SafetyBlock, "Duplicate"):
                 ledger.replay_once(self.snapshot, self.plan, now=self.now)
             ledger.halt()

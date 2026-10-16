@@ -14,8 +14,10 @@ the repository or upload account snapshots, contract IDs or credentials.
 - Every committed synthetic action has a chained SHA-256 digest, with
   continuity verified under SQLite's \`BEGIN IMMEDIATE\` transaction.
 - The HALT/ENABLE switch survives process restarts and must match the
-  simulated control history. It cannot be bypassed by merely choosing an
-  execution parameter in the replay method.
+  simulated control history. **Every new process opening automatically
+  re-enters HALT**, even if the previous process was unlocked; re-arming
+  requires renewed explicit acknowledgement. It cannot be bypassed by merely
+  choosing an execution parameter in the replay method.
 - Synthetic instant-full-fill reconciliation checks positions, cash and the
   underlying original quote snapshot SHA before committing a simulation.
 

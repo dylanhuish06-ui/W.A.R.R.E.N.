@@ -56,6 +56,24 @@ class OfflineReplayLedger:
                 digest TEXT NOT NULL
             )
         """)
+        # Fail closed on EVERY process open: a prior simulator unlock cannot
+        # authorize a subsequent process. Verify history before appending
+        # the synthetic reboot HALT event.
+        self.connection.execute("BEGIN IMMEDIATE")
+        try:
+            self.verify_chain()
+            if not self.halted:
+                self.connection.execute(
+                    "UPDATE simulation_control SET halted=1 WHERE singleton=1")
+                self._append_locked(
+                    "HALT", None,
+                    {"mode": "SIMULATION_ONLY", "orders_submitted": 0,
+                     "reason": "NEW_PROCESS_REQUIRES_EXPLICIT_REENABLE"})
+            self.connection.execute("COMMIT")
+        except Exception:
+            self.connection.execute("ROLLBACK")
+            self.connection.close()
+            raise
 
     def close(self):
         self.connection.close()
