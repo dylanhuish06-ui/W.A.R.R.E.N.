@@ -1,0 +1,74 @@
+name: Research CI
+on:
+  push:
+    branches: [main, 'feature/**']
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  unit-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Offline research unit tests
+        run: PYTHONPATH=src python -m unittest discover -s tests -v
+      - name: Synthetic smoke test
+        run: |
+          python scripts/generate_demo_data.py --output data/demo_prices.csv
+          PYTHONPATH=src python -m warren.cli backtest --prices data/demo_prices.csv --output outputs/demo_report.json
+          test -s outputs/demo_report.json
+  market-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Historical data audit
+        run: |
+          python scripts/market_validation.py --output outputs/market_validation.json
+          test -s outputs/market_validation.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: historical-research-audit
+          path: outputs/market_validation.json
+          if-no-files-found: error
+  optimisation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Full exploratory strategy search
+        run: |
+          python scripts/strategy_search.py --output outputs/strategy_optimization.json
+          test -s outputs/strategy_optimization.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: exploratory-strategy-search
+          path: outputs/strategy_optimization.json
+          if-no-files-found: error
+  forecast-calibration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Retrospective prequential forecast scoring (no broker)
+        run: |
+          python scripts/forecast_calibration.py --output outputs/forecast_calibration.json
+          test -s outputs/forecast_calibration.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: historical-forecast-calibration
+          path: outputs/forecast_calibration.json
+          if-no-files-found: error
